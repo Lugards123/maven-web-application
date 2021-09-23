@@ -1,0 +1,43 @@
+pipeline{
+    agent any
+    tools { maven 'Maven'}
+    stages{
+        stage('1-clone'){
+            steps{
+                checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'GITHUB-CREDENTIALS', url: 'https://github.com/Lugards123/maven-web-application']]])
+            }
+        }
+        stage('2-mavenbuild'){
+            steps{
+                sh 'mvn clean package'
+            }
+        }
+        stage('3-codequality'){
+            steps{
+                sh 'mvn sonar:sonar'
+            }
+        }
+        stage('4-artifactupload'){
+            steps{
+                sh 'mvn deploy'
+            }
+        }
+        stage('5-deploytest'){
+            steps{
+                deploy adapters: [tomcat9(credentialsId: 'tomcat', path: '', url: 'http://100.26.137.165:8080/')], contextPath: null, war: 'target/*.war'
+            }
+        }
+        stage('6-review and approve'){
+            steps{
+                timeout(time:2, unit:'HOURS'){
+                    input message: 'please review and approve'
+                }
+            }
+        }
+        stage('7-deployprod'){
+            steps{
+                deploy adapters: [tomcat9(credentialsId: 'tomcat', path: '', url: 'http://100.26.137.165:8080/')], contextPath: null, war: 'target/*.war'
+            }
+        }
+    }
+}
